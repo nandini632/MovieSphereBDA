@@ -1,129 +1,220 @@
 {% extends "base.html" %}
-{% block title %}Analytics — MovieSphere{% endblock %}
+{% block title %}MovieLens EDA — MovieSphere{% endblock %}
 {% block page_id %}analytics{% endblock %}
 
 {% block content %}
-
 <section class="page-head container">
   <span class="page-head__eyebrow">
     <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
-    Big Data Analytics
+    Big Data Analytics · Exploratory Data Analysis
   </span>
-  <h1 class="page-head__title">Movie Data Analytics</h1>
+  <h1 class="page-head__title">MovieLens Data Explorer</h1>
   <p class="page-head__subtitle">
-    Explore patterns and insights extracted from large-scale movie and user interaction data.
+    Follow real rating activity across movies, genres, release decades, and users.
+    Every chart updates from the selected dataset filters.
   </p>
 </section>
 
-<section class="container analytics">
+<section class="container analytics" aria-labelledby="edaSectionTitle">
+  <h2 class="visually-hidden" id="edaSectionTitle">MovieLens exploratory analysis</h2>
 
-  <!-- ============= FILTER TOOLBAR ============= -->
-  <div class="analytics-filters" id="analyticsFilters" role="group" aria-label="Analytics filters">
+  <div class="eda-toolbar">
+    <div class="analytics-filters" id="analyticsFilters" role="group" aria-label="EDA filters">
+      <button class="filter-pill is-active" data-filter="all" type="button">
+        <i class="fa-solid fa-layer-group" aria-hidden="true"></i> All Data
+      </button>
 
-    <button class="filter-pill is-active" data-filter="all" type="button">
-      <i class="fa-solid fa-layer-group" aria-hidden="true"></i> All Data
+      <div class="filter-pill-group">
+        <button class="filter-pill" data-filter="genre" type="button"
+                aria-haspopup="listbox" aria-expanded="false">
+          <i class="fa-solid fa-tags" aria-hidden="true"></i>
+          <span class="filter-pill__value">Genre</span>
+          <i class="fa-solid fa-chevron-down filter-pill__caret" aria-hidden="true"></i>
+        </button>
+        <div class="filter-menu" data-menu="genre" role="listbox" hidden></div>
+      </div>
+
+      <div class="filter-pill-group">
+        <button class="filter-pill" data-filter="decade" type="button"
+                aria-haspopup="listbox" aria-expanded="false">
+          <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+          <span class="filter-pill__value">Release decade</span>
+          <i class="fa-solid fa-chevron-down filter-pill__caret" aria-hidden="true"></i>
+        </button>
+        <div class="filter-menu" data-menu="decade" role="listbox" hidden></div>
+      </div>
+
+      <div class="filter-pill-group">
+        <button class="filter-pill" data-filter="rating" type="button"
+                aria-haspopup="listbox" aria-expanded="false">
+          <i class="fa-solid fa-star" aria-hidden="true"></i>
+          <span class="filter-pill__value">Movie score</span>
+          <i class="fa-solid fa-chevron-down filter-pill__caret" aria-hidden="true"></i>
+        </button>
+        <div class="filter-menu" data-menu="rating" role="listbox" hidden></div>
+      </div>
+    </div>
+
+    <button class="filter-pill eda-export" id="exportEda" type="button">
+      <i class="fa-solid fa-download" aria-hidden="true"></i>
+      Export current view
     </button>
-
-    <div class="filter-pill-group">
-      <button class="filter-pill" data-filter="genre" type="button"
-              aria-haspopup="listbox" aria-expanded="false">
-        <i class="fa-solid fa-tags" aria-hidden="true"></i>
-        <span class="filter-pill__value">Genre</span>
-        <i class="fa-solid fa-chevron-down filter-pill__caret" aria-hidden="true"></i>
-      </button>
-      <div class="filter-menu" data-menu="genre" role="listbox" hidden></div>
-    </div>
-
-    <div class="filter-pill-group">
-      <button class="filter-pill" data-filter="year" type="button"
-              aria-haspopup="listbox" aria-expanded="false">
-        <i class="fa-regular fa-calendar" aria-hidden="true"></i>
-        <span class="filter-pill__value">Year</span>
-        <i class="fa-solid fa-chevron-down filter-pill__caret" aria-hidden="true"></i>
-      </button>
-      <div class="filter-menu" data-menu="year" role="listbox" hidden></div>
-    </div>
-
-    <div class="filter-pill-group">
-      <button class="filter-pill" data-filter="rating" type="button"
-              aria-haspopup="listbox" aria-expanded="false">
-        <i class="fa-solid fa-star" aria-hidden="true"></i>
-        <span class="filter-pill__value">Rating</span>
-        <i class="fa-solid fa-chevron-down filter-pill__caret" aria-hidden="true"></i>
-      </button>
-      <div class="filter-menu" data-menu="rating" role="listbox" hidden></div>
-    </div>
-
   </div>
 
-  <!-- ============= KPI CARDS ============= -->
-  <div class="kpi-grid analytics__kpis" id="analyticsKpis">
-    <div class="skeleton skeleton--kpi"></div>
-    <div class="skeleton skeleton--kpi"></div>
-    <div class="skeleton skeleton--kpi"></div>
-    <div class="skeleton skeleton--kpi"></div>
-    <div class="skeleton skeleton--kpi"></div>
+  <div class="eda-meta" id="edaMeta" aria-live="polite">
+    <span class="eda-meta__pulse" aria-hidden="true"></span>
+    Loading MovieLens data…
   </div>
 
-  <!-- ============= CHARTS ============= -->
+  <div class="kpi-grid analytics__kpis" id="analyticsKpis" aria-live="polite">
+    {% for _ in range(5) %}<div class="skeleton skeleton--kpi"></div>{% endfor %}
+  </div>
+
   <div class="analytics__grid">
-
     <article class="chart-card">
       <div class="chart-card__head">
-        <h2 class="chart-card__title">Rating Distribution</h2>
-        <p class="chart-card__sub">Number of ratings per star bucket.</p>
+        <h2 class="chart-card__title">Rating distribution</h2>
+        <p class="chart-card__sub">Observed MovieLens scores in half-star steps.</p>
       </div>
-      <div class="chart-card__body"><canvas id="chartDistribution"></canvas></div>
+      <div class="chart-card__body"><canvas id="chartDistribution" aria-label="Rating distribution chart"></canvas></div>
     </article>
 
     <article class="chart-card">
       <div class="chart-card__head">
-        <h2 class="chart-card__title">Popular Genres</h2>
-        <p class="chart-card__sub">Share of titles per genre.</p>
+        <h2 class="chart-card__title">Genre mix</h2>
+        <p class="chart-card__sub">Movie titles in each genre. Titles may have more than one genre.</p>
       </div>
-      <div class="chart-card__body"><canvas id="chartDonut"></canvas></div>
+      <div class="chart-card__body"><canvas id="chartDonut" aria-label="Movie counts by genre chart"></canvas></div>
     </article>
 
     <article class="chart-card chart-card--wide">
       <div class="chart-card__head">
-        <h2 class="chart-card__title">Movies by Genre</h2>
-        <p class="chart-card__sub">Number of titles per genre in the current scope.</p>
+        <h2 class="chart-card__title">Average rating by genre</h2>
+        <p class="chart-card__sub">Genres with at least 20 observed ratings; hover for sample size.</p>
       </div>
-      <div class="chart-card__body"><canvas id="chartByGenre"></canvas></div>
+      <div class="chart-card__body"><canvas id="chartAvgGenre" aria-label="Average rating by genre chart"></canvas></div>
     </article>
 
     <article class="chart-card">
       <div class="chart-card__head">
-        <h2 class="chart-card__title">Average Rating by Genre</h2>
-        <p class="chart-card__sub">Mean user score per genre.</p>
+        <h2 class="chart-card__title">Most-rated movies</h2>
+        <p class="chart-card__sub">Titles ranked by actual rating count.</p>
       </div>
-      <div class="chart-card__body"><canvas id="chartAvgGenre"></canvas></div>
+      <div class="chart-card__body"><canvas id="chartMostRated" aria-label="Most-rated movies chart"></canvas></div>
     </article>
 
     <article class="chart-card">
       <div class="chart-card__head">
-        <h2 class="chart-card__title">Most Rated Movies</h2>
-        <p class="chart-card__sub">Top titles by interaction volume.</p>
+        <h2 class="chart-card__title">Catalog by release decade</h2>
+        <p class="chart-card__sub">Number of titles by release decade.</p>
       </div>
-      <div class="chart-card__body"><canvas id="chartMostRated"></canvas></div>
+      <div class="chart-card__body"><canvas id="chartByDecade" aria-label="Movies by release decade chart"></canvas></div>
     </article>
 
     <article class="chart-card chart-card--wide">
       <div class="chart-card__head">
-        <h2 class="chart-card__title">Rating Activity</h2>
-        <p class="chart-card__sub">Interaction volume over time (sample timestamps).</p>
+        <h2 class="chart-card__title">Rating activity over time</h2>
+        <p class="chart-card__sub">Ratings grouped by their recorded timestamp year (UTC).</p>
       </div>
-      <div class="chart-card__body"><canvas id="chartActivity"></canvas></div>
+      <div class="chart-card__body"><canvas id="chartActivity" aria-label="Ratings over time chart"></canvas></div>
     </article>
 
+    <article class="chart-card chart-card--wide">
+      <div class="chart-card__head">
+        <h2 class="chart-card__title">How much does each user rate?</h2>
+        <p class="chart-card__sub">Users grouped by their number of ratings in the filtered view.</p>
+      </div>
+      <div class="chart-card__body"><canvas id="chartUserActivity" aria-label="Rating activity by user chart"></canvas></div>
+    </article>
+
+    <article class="chart-card">
+      <div class="chart-card__head">
+        <h2 class="chart-card__title">Rating activity by weekday</h2>
+        <p class="chart-card__sub">Recorded events grouped by UTC weekday.</p>
+      </div>
+      <div class="chart-card__body"><canvas id="chartWeekday" aria-label="Rating activity by weekday chart"></canvas></div>
+    </article>
+
+    <article class="chart-card">
+      <div class="chart-card__head">
+        <h2 class="chart-card__title">Popularity versus score</h2>
+        <p class="chart-card__sub">Each dot is a movie; the popularity axis uses a log scale. Select a dot for details.</p>
+      </div>
+      <div class="chart-card__body"><canvas id="chartPopularity" aria-label="Movie popularity versus average score scatter chart"></canvas></div>
+    </article>
+
+    <article class="chart-card">
+      <div class="chart-card__head">
+        <h2 class="chart-card__title">Rating profile</h2>
+        <p class="chart-card__sub">Weighted statistics over observed ratings in this view.</p>
+      </div>
+      <div class="eda-quality" id="ratingProfile"></div>
+    </article>
+
+    <article class="chart-card">
+      <div class="chart-card__head">
+        <h2 class="chart-card__title">Feature correlations</h2>
+        <p class="chart-card__sub">Pearson and Spearman correlations across rated movies in scope.</p>
+      </div>
+      <div class="eda-quality" id="correlationSummary"></div>
+    </article>
+
+    <article class="chart-card chart-card--wide">
+      <div class="chart-card__head">
+        <h2 class="chart-card__title">Genre × rating heatmap</h2>
+        <p class="chart-card__sub">Observed rating counts for the 12 most-rated genres, split by half-star score.</p>
+      </div>
+      <div class="eda-heatmap-wrap" id="genreHeatmap" aria-live="polite"></div>
+    </article>
+
+    <article class="chart-card chart-card--wide">
+      <div class="chart-card__head">
+        <h2 class="chart-card__title">Highest-rated titles</h2>
+        <p class="chart-card__sub">Bayesian-adjusted rank with a 20-rating prior; average score is shown beside it.</p>
+      </div>
+      <div class="eda-table-wrap">
+        <table class="eda-table">
+          <thead><tr><th scope="col">Movie</th><th scope="col">Average</th><th scope="col">Adjusted</th><th scope="col">Ratings</th></tr></thead>
+          <tbody id="topRatedMovies"><tr><td colspan="4">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="chart-card chart-card--wide">
+      <div class="chart-card__head">
+        <h2 class="chart-card__title">Most divisive titles</h2>
+        <p class="chart-card__sub">Movies with the highest rating standard deviation and at least 20 ratings.</p>
+      </div>
+      <div class="eda-table-wrap">
+        <table class="eda-table">
+          <thead><tr><th scope="col">Movie</th><th scope="col">Average</th><th scope="col">Rating spread</th><th scope="col">Ratings</th></tr></thead>
+          <tbody id="controversialMovies"><tr><td colspan="4">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="chart-card">
+      <div class="chart-card__head">
+        <h2 class="chart-card__title">Community tags</h2>
+        <p class="chart-card__sub">Most frequently applied tags in this view.</p>
+      </div>
+      <div class="eda-tag-cloud" id="popularTags"></div>
+    </article>
+
+    <article class="chart-card">
+      <div class="chart-card__head">
+        <h2 class="chart-card__title">Data quality</h2>
+        <p class="chart-card__sub">Checks run against the source ratings table.</p>
+      </div>
+      <div class="eda-quality" id="dataQuality"></div>
+    </article>
   </div>
 
-  <!-- ============= KEY INSIGHTS ============= -->
-  <section class="key-insights">
+  <section class="key-insights" aria-labelledby="insightHeading">
     <div class="section__head">
       <div>
-        <h2 class="section__title">Key Insights</h2>
-        <p class="section__subtitle">Auto-generated observations from the current filter scope.</p>
+        <h2 class="section__title" id="insightHeading">What stands out</h2>
+        <p class="section__subtitle">Observations recalculated for the current filter scope.</p>
       </div>
     </div>
     <div class="insight-list" id="insightList">
@@ -132,9 +223,7 @@
       <div class="skeleton skeleton--row" style="height:72px"></div>
     </div>
   </section>
-
 </section>
-
 {% endblock %}
 
 {% block scripts %}

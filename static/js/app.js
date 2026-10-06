@@ -1,67 +1,18 @@
 /* =========================================================
    MovieSphere — app.js
-   Global app shell: nav, search, mock data, API layer,
+   Global app shell: navigation, search, API layer,
    movie card renderer, home page init, toasts.
    ========================================================= */
 
 /* =========================================================
-   1) CENTRALIZED MOCK DATA
+   API LAYER
    ---------------------------------------------------------
-   Used ONLY when the Flask API is unavailable.
-   Keep all mock data here — never inline in the UI.
-   ========================================================= */
-const MockData = (() => {
-  const movies = [
-    { id: 1,  title: 'Inception',          year: 2010, rating: 4.21, ratingsCount: 31256, genres: ['Sci-Fi','Thriller'], popularity: 98, tags: ['Mind-bending','Dream','Complex'] },
-    { id: 2,  title: 'Interstellar',       year: 2014, rating: 4.15, ratingsCount: 28411, genres: ['Sci-Fi','Drama'],    popularity: 95, tags: ['Space','Emotional','Epic'] },
-    { id: 3,  title: 'The Dark Knight',    year: 2008, rating: 4.29, ratingsCount: 42108, genres: ['Action','Crime'],    popularity: 99, tags: ['Gritty','Hero','Iconic'] },
-    { id: 4,  title: 'Pulp Fiction',       year: 1994, rating: 4.18, ratingsCount: 29876, genres: ['Crime','Drama'],     popularity: 92, tags: ['Nonlinear','Cult','Dialogue'] },
-    { id: 5,  title: 'The Matrix',         year: 1999, rating: 4.19, ratingsCount: 33450, genres: ['Sci-Fi','Action'],   popularity: 96, tags: ['Cyberpunk','Philosophical','Iconic'] },
-    { id: 6,  title: 'Fight Club',         year: 1999, rating: 4.13, ratingsCount: 27590, genres: ['Drama','Thriller'],  popularity: 90, tags: ['Twist','Gritty','Cult'] },
-    { id: 7,  title: 'Forrest Gump',       year: 1994, rating: 4.05, ratingsCount: 25112, genres: ['Drama','Romance'],   popularity: 88, tags: ['Heartwarming','Historic'] },
-    { id: 8,  title: 'The Godfather',      year: 1972, rating: 4.32, ratingsCount: 36400, genres: ['Crime','Drama'],     popularity: 97, tags: ['Classic','Family','Crime'] },
-    { id: 9,  title: 'Parasite',           year: 2019, rating: 4.24, ratingsCount: 18900, genres: ['Thriller','Drama'],  popularity: 89, tags: ['Social','Twist','Korean'] },
-    { id: 10, title: 'Whiplash',           year: 2014, rating: 4.20, ratingsCount: 17240, genres: ['Drama','Music'],     popularity: 86, tags: ['Intense','Ambition'] },
-    { id: 11, title: 'Spirited Away',      year: 2001, rating: 4.27, ratingsCount: 21430, genres: ['Animation','Adventure'], popularity: 91, tags: ['Fantasy','Studio Ghibli'] },
-    { id: 12, title: 'The Prestige',       year: 2006, rating: 4.16, ratingsCount: 19870, genres: ['Drama','Thriller'],  popularity: 87, tags: ['Magic','Rivalry','Twist'] },
-    { id: 13, title: 'Gladiator',          year: 2000, rating: 4.10, ratingsCount: 22340, genres: ['Action','Drama'],    popularity: 85, tags: ['Epic','Revenge'] },
-    { id: 14, title: 'The Departed',       year: 2006, rating: 4.12, ratingsCount: 18120, genres: ['Crime','Thriller'],  popularity: 84, tags: ['Undercover','Crime'] },
-    { id: 15, title: 'Django Unchained',   year: 2012, rating: 4.14, ratingsCount: 20560, genres: ['Western','Drama'],   popularity: 86, tags: ['Revenge','Stylized'] },
-    { id: 16, title: 'Shutter Island',     year: 2010, rating: 4.06, ratingsCount: 17980, genres: ['Mystery','Thriller'], popularity: 82, tags: ['Twist','Psychological'] },
-  ];
-
-  const kpis = [
-    { key: 'ratings',  label: 'Ratings Processed', value: 25000000, display: '25M+',  icon: 'fa-database' },
-    { key: 'movies',   label: 'Movies',            value: 62423,    display: '62K+',  icon: 'fa-film' },
-    { key: 'users',    label: 'Users',             value: 162541,   display: '162K+', icon: 'fa-users' },
-    { key: 'genres',   label: 'Genres',            value: 20,       display: '20+',   icon: 'fa-tags' },
-  ];
-
-  const genres = [
-    { name: 'Action',   count: 8472, icon: 'fa-explosion' },
-    { name: 'Drama',    count: 16234, icon: 'fa-masks-theater' },
-    { name: 'Comedy',   count: 11208, icon: 'fa-face-laugh' },
-    { name: 'Sci-Fi',   count: 3910, icon: 'fa-rocket' },
-    { name: 'Thriller', count: 6240, icon: 'fa-bolt' },
-    { name: 'Romance',  count: 5480, icon: 'fa-heart' },
-  ];
-
-  const analytics = { kpis };
-
-  return { movies, kpis, genres, analytics };
-})();
-
-/* =========================================================
-   2) API LAYER
-   ---------------------------------------------------------
-   All fetch() calls live here. Each function falls back to
-   mock data if the Flask route is unavailable, so the
-   frontend can always be previewed standalone.
+   Dashboard views always use the configured MovieLens dataset.
    ========================================================= */
 const API = (() => {
   const BASE = ''; // same-origin
 
-  async function request(path, { fallback, timeout = 4000 } = {}) {
+  async function request(path, { timeout = 10000 } = {}) {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), timeout);
     try {
@@ -74,23 +25,17 @@ const API = (() => {
       return await res.json();
     } catch (err) {
       clearTimeout(t);
-      if (fallback !== undefined) return fallback;
       throw err;
     }
   }
 
   return {
-    getMovies:           ()     => request('/api/movies',                  { fallback: MockData.movies }),
-    searchMovies:        (q)    => request(`/api/movies/search?q=${encodeURIComponent(q)}`,
-                                            { fallback: MockData.movies.filter(m =>
-                                              m.title.toLowerCase().includes(q.toLowerCase())) }),
-    getMovieDetails:     (id)   => request(`/api/movies/${id}`,
-                                            { fallback: MockData.movies.find(m => String(m.id) === String(id)) }),
-    getRecommendations:  (id, u)=> request(`/api/recommendations/${id}${u ? `?user=${u}` : ''}`,
-                                            { fallback: MockData.movies.filter(m => String(m.id) !== String(id)).slice(0, 8) }),
-    getAnalytics:        ()     => request('/api/analytics',               { fallback: MockData.analytics }),
-    getUserInsights:     (u)    => request(`/api/user/${u}/insights`,      { fallback: null }),
-    getCloudStatus:      ()     => request('/api/cloud/status',            { fallback: null }),
+    getMovies:           ()      => request('/api/movies'),
+    searchMovies:        q       => request(`/api/movies/search?q=${encodeURIComponent(q)}`),
+    getMovieDetails:     id      => request(`/api/movies/${id}`),
+    getRecommendations:  (id, u) => request(`/api/recommendations/${id}${u ? `?user=${u}` : ''}`),
+    getAnalytics:        ()      => request('/api/analytics'),
+    getUserInsights:     u       => request(`/api/user/${u}/insights`),
   };
 })();
 
@@ -157,7 +102,7 @@ const Toast = {
    ========================================================= */
 const MovieCard = {
   render(movie, opts = {}) {
-    const { match, showMatch = false, showFav = true } = opts;
+    const { match, showMatch = false } = opts;
     const safeTitle = Utils.escapeHtml(movie.title);
     const genres = (movie.genres || []).join(' • ');
     const rating = Utils.formatRating(movie.rating);
@@ -175,12 +120,6 @@ const MovieCard = {
       <article class="movie-card" data-id="${movie.id}">
         <div class="movie-card__poster">
           ${posterInner}
-          ${showFav ? `
-            <button class="movie-card__fav" type="button"
-                    aria-label="Add ${safeTitle} to favorites"
-                    data-fav="${movie.id}">
-              <i class="fa-regular fa-heart" aria-hidden="true"></i>
-            </button>` : ''}
           <span class="movie-card__rating-badge">
             <i class="fa-solid fa-star" aria-hidden="true"></i>${rating}
           </span>
@@ -432,38 +371,31 @@ const GlobalSearch = {
    ========================================================= */
 const Home = {
   async init() {
-    this.renderHeroStats();
-    await this.renderTrending();
-    await this.renderKPIs();
-    this.renderGenres();
-    this.bindFavorites();
+    await Promise.allSettled([
+      this.renderHeroStats(), this.renderTrending(), this.renderKPIs(), this.renderGenres(),
+    ]);
   },
 
   async renderHeroStats() {
     const el = document.getElementById('heroStats');
     if (!el) return;
 
-    let analytics;
     try {
-      analytics = await API.getAnalytics();
+      const analytics = await API.getAnalytics();
+      const items = (analytics?.kpis || []).slice(0, 4);
+      if (!items.length) throw new Error('No analytics are available.');
+
+      el.innerHTML = items.map(k => `
+        <div class="hero__stat">
+          <span class="hero__stat-value" data-count="${Number(k.value) || 0}">0</span>
+          <span class="hero__stat-label">${Utils.escapeHtml(k.label)}</span>
+        </div>`).join('');
+      el.querySelectorAll('[data-count]').forEach(node => {
+        Counter.animate(node, Number(node.dataset.count));
+      });
     } catch {
-      analytics = MockData.analytics;
+      el.innerHTML = '<p class="hero__stat-label">Dataset analytics are unavailable. Check the MovieLens files.</p>';
     }
-
-    const kpis = analytics?.kpis || MockData.kpis;
-    const items = kpis.slice(0, 4);
-
-    el.innerHTML = items.map(k => `
-      <div class="hero__stat">
-        <span class="hero__stat-value" data-count="${k.value}">0</span>
-        <span class="hero__stat-label">${Utils.escapeHtml(k.label)}</span>
-      </div>
-    `).join('');
-
-    el.querySelectorAll('[data-count]').forEach(node => {
-      const target = Number(node.dataset.count);
-      Counter.animate(node, target);
-    });
   },
 
   async renderTrending() {
@@ -490,21 +422,17 @@ const Home = {
     const grid = document.getElementById('kpiGrid');
     if (!grid) return;
 
-    let kpis = MockData.kpis;
     try {
       const data = await API.getAnalytics();
-      if (data && Array.isArray(data.kpis) && data.kpis.length) {
-        kpis = data.kpis;
-      }
-    } catch { /* fall back to mock */ }
+      const kpis = data?.kpis || [];
+      if (!kpis.length) throw new Error('No analytics are available.');
 
-    grid.innerHTML = kpis.map((k, i) => `
-      <article class="kpi-card" style="animation-delay:${i * 60}ms">
-        <div class="kpi-card__icon"><i class="fa-solid ${k.icon}" aria-hidden="true"></i></div>
-        <div class="kpi-card__value" data-count="${k.value}">0</div>
-        <div class="kpi-card__label">${Utils.escapeHtml(k.label)}</div>
-      </article>
-    `).join('');
+      grid.innerHTML = kpis.map((k, i) => `
+        <article class="kpi-card" style="animation-delay:${i * 60}ms">
+          <div class="kpi-card__icon"><i class="fa-solid ${Utils.escapeHtml(k.icon)}" aria-hidden="true"></i></div>
+          <div class="kpi-card__value" data-count="${Number(k.value) || 0}">0</div>
+          <div class="kpi-card__label">${Utils.escapeHtml(k.label)}</div>
+        </article>`).join('');
 
     // Animate when scrolled into view
     const io = new IntersectionObserver((entries, obs) => {
@@ -517,35 +445,34 @@ const Home = {
       });
     }, { threshold: 0.35 });
 
-    grid.querySelectorAll('.kpi-card').forEach(card => io.observe(card));
+      grid.querySelectorAll('.kpi-card').forEach(card => io.observe(card));
+    } catch {
+      grid.innerHTML = this.emptyState('Dataset analytics are unavailable. Check the MovieLens files.');
+    }
   },
 
-  renderGenres() {
+  async renderGenres() {
     const grid = document.getElementById('genreGrid');
     if (!grid) return;
 
-    grid.innerHTML = MockData.genres.map((g, i) => `
-      <a href="/explore?genre=${encodeURIComponent(g.name)}"
-         class="genre-card" style="animation-delay:${i * 50}ms">
-        <i class="fa-solid ${g.icon} genre-card__icon" aria-hidden="true"></i>
-        <span class="genre-card__count">${Utils.formatNumber(g.count)} movies</span>
-        <span class="genre-card__name">${Utils.escapeHtml(g.name)}</span>
-      </a>
-    `).join('');
-  },
-
-  bindFavorites() {
-    document.addEventListener('click', e => {
-      const btn = e.target.closest('[data-fav]');
-      if (!btn) return;
-      e.preventDefault();
-      btn.classList.toggle('is-active');
-      const icon = btn.querySelector('i');
-      if (!icon) return;
-      const active = btn.classList.contains('is-active');
-      icon.className = active ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
-      Toast.show(active ? 'Added to favorites' : 'Removed from favorites', 'success', 1800);
-    });
+    try {
+      const movies = await API.getMovies();
+      const counts = new Map();
+      movies.forEach(movie => (movie.genres || []).forEach(genre => {
+        counts.set(genre, (counts.get(genre) || 0) + 1);
+      }));
+      const popular = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
+      if (!popular.length) throw new Error('No genres are available.');
+      grid.innerHTML = popular.map(([genre, count], index) => `
+        <a href="/explore?genre=${encodeURIComponent(genre)}"
+           class="genre-card" style="animation-delay:${index * 50}ms">
+          <i class="fa-solid fa-film genre-card__icon" aria-hidden="true"></i>
+          <span class="genre-card__count">${Utils.formatNumber(count)} movies</span>
+          <span class="genre-card__name">${Utils.escapeHtml(genre)}</span>
+        </a>`).join('');
+    } catch {
+      grid.innerHTML = this.emptyState('Genre data is unavailable. Check the MovieLens files.');
+    }
   },
 
   emptyState(message) {
@@ -594,7 +521,6 @@ document.addEventListener('DOMContentLoaded', () => MovieSphere.init());
 window.MovieSphere = MovieSphere;
 window.API = API;
 window.MovieCard = MovieCard;
-window.MockData = MockData;
 window.Utils = Utils;
 window.Toast = Toast;
 window.Counter = Counter;

@@ -171,18 +171,6 @@
       if (r) els.reset?.click();
     });
 
-    // Favorites (reuse from app.js pattern)
-    document.addEventListener('click', e => {
-      const btn = e.target.closest('[data-fav]');
-      if (!btn) return;
-      e.preventDefault();
-      btn.classList.toggle('is-active');
-      const icon = btn.querySelector('i');
-      if (!icon) return;
-      const active = btn.classList.contains('is-active');
-      icon.className = active ? 'fa-solid fa-heart' : 'fa-regular fa-heart';
-      Toast.show(active ? 'Added to favorites' : 'Removed from favorites', 'success', 1600);
-    });
   }
 
   async function init() {

@@ -3,13 +3,12 @@ MovieSphere — Flask application
 Phase 6A: real MovieLens data served via Pandas.
 """
 
-from salesforce_integration import get_salesforce_accounts
-
 from flask import Flask, render_template, jsonify, request
 
 from data_layer import loader as data_loader
 from data_layer import service as data_service
 from data_layer import artifacts as data_artifacts
+from data_layer import eda as data_eda
 
 app = Flask(__name__)
 
@@ -41,11 +40,6 @@ def recommendations_page():
 @app.route("/analytics")
 def analytics_page():
     return render_template("analytics.html")
-
-
-@app.route("/cloud")
-def cloud_page():
-    return render_template("cloud.html")
 
 
 @app.route("/about")
@@ -101,6 +95,50 @@ def api_analytics():
         return _dataset_unavailable()
 
     return jsonify(data_service.analytics_kpis())
+
+
+@app.route("/api/analytics/eda")
+def api_analytics_eda():
+    """Return actual MovieLens aggregates for the interactive EDA page."""
+    if not data_loader.data_available():
+        return _dataset_unavailable()
+
+    genre = request.args.get("genre", "").strip()
+    decade = request.args.get("decade", "").strip().lower()
+    raw_min_rating = request.args.get("min_rating", "0")
+    try:
+        min_rating = float(raw_min_rating)
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid_min_rating"}), 400
+    if not 0 <= min_rating <= 5:
+        return jsonify({"error": "invalid_min_rating"}), 400
+    if decade and decade != "unknown":
+        try:
+            decade_value = int(decade)
+        except ValueError:
+            return jsonify({"error": "invalid_decade"}), 400
+        if decade_value < 1800 or decade_value > 2100 or decade_value % 10:
+            return jsonify({"error": "invalid_decade"}), 400
+
+    try:
+        snapshot = data_eda.analytics_eda(
+            genre=genre, decade=decade, min_rating=min_rating,
+        )
+    except (OSError, KeyError, ValueError):
+        app.logger.exception("Unable to build EDA snapshot")
+        return jsonify({"error": "analytics_unavailable"}), 500
+    return jsonify(snapshot)
+
+
+@app.route("/api/users")
+def api_users():
+    """List actual dataset users for the user-level analysis picker."""
+    if not data_loader.data_available():
+        return _dataset_unavailable()
+
+    limit = request.args.get("limit", 1000, type=int)
+    limit = max(1, min(limit, 10000))
+    return jsonify(data_service.user_directory(limit=limit))
 
 
 @app.route("/api/user/<int:user_id>/insights")
@@ -194,31 +232,6 @@ def api_user_recommendations(user_id):
 
 
 # ======================================================================
-# SALESFORCE CLOUD INTEGRATION
-# ======================================================================
-
-@app.route("/api/salesforce/movies")
-def salesforce_movies():
-    """
-    Returns MovieSphere movie records stored in Salesforce.
-    """
-    try:
-        records = get_salesforce_accounts()
-
-        return jsonify({
-            "success": True,
-            "count": len(records),
-            "movies": records
-        })
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-
-# ======================================================================
 # APPLICATION START
 # ======================================================================
 
@@ -227,6 +240,6 @@ if __name__ == "__main__":
 
     app.run(
         debug=False,
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000))
+        host="127.0.0.1",
+        port=int(os.environ.get("PORT", 5000)),
     )

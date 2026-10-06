@@ -4,7 +4,6 @@ Shared Spark session builder and file path helpers.
 """
 
 import os
-from pyspark.sql import SparkSession
 
 
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,11 +20,13 @@ def ensure_dirs() -> None:
     os.makedirs(MODELS_DIR, exist_ok=True)
 
 
-def build_spark(app_name: str) -> SparkSession:
+def build_spark(app_name: str):
     """
     Local Spark session tuned for the MovieLens-small dataset.
     Override master with SPARK_MASTER env var for cluster runs later.
     """
+    from pyspark.sql import SparkSession
+
     return (
         SparkSession.builder
         .appName(app_name)

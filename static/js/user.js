@@ -2,77 +2,13 @@
    MovieSphere — user.js
    User profile analytics with a per-user picker.
    API: GET /api/user/<id>/insights
-   Falls back to deterministic mock profiles so the page
-   renders standalone.
+   Profiles are computed from the configured MovieLens dataset.
    ========================================================= */
 
 (() => {
 
   /* ---------------------------------------------------------
-     1) DETERMINISTIC MOCK PROFILES
-     Same userId always produces the same profile.
-     --------------------------------------------------------- */
-  const MockProfiles = (() => {
-    const USER_COUNT = 10;
-    const GENRES = ['Sci-Fi','Drama','Action','Comedy','Thriller','Romance','Crime','Animation'];
-
-    // Small deterministic pseudo-random in [0,1)
-    function rand(seed) {
-      const x = Math.sin(seed * 9301 + 49297) * 233280;
-      return x - Math.floor(x);
-    }
-
-    function profileFor(userId) {
-      const id = Number(userId) || 1;
-      const r = (n) => rand(id * 7919 + n);
-
-      const favoriteGenre  = GENRES[Math.floor(r(1) * GENRES.length)];
-      let   mostActive     = GENRES[Math.floor(r(2) * GENRES.length)];
-      if (mostActive === favoriteGenre) {
-        mostActive = GENRES[(GENRES.indexOf(mostActive) + 1) % GENRES.length];
-      }
-
-      const moviesRated = 60 + Math.floor(r(3) * 220);          // 60 .. 279
-      const avgRating   = 3.3 + r(4) * 1.3;                     // 3.3 .. 4.6
-
-      // Favorite genres distribution (donut)
-      const favoriteGenres = GENRES
-        .map((g, i) => ({
-          genre: g,
-          count: Math.round(6 + r(20 + i) * (g === favoriteGenre ? 70 : 40)),
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 6);
-
-      // Rating behaviour histogram (5★ → 1★), shaped by avgRating
-      const highBias = avgRating / 5;
-      const weights = [
-        Math.pow(highBias, 2) * 1.8 + 0.05,                          // 5★
-        highBias * 1.3 + 0.10,                                       // 4★
-        0.45 + (1 - Math.abs(avgRating - 3) / 2) * 0.35,             // 3★
-        (1 - highBias) * 0.9 + 0.05,                                 // 2★
-        Math.pow(1 - highBias, 2) * 1.4 + 0.02,                      // 1★
-      ];
-      const sum = weights.reduce((s, w) => s + w, 0);
-      const ratingBehaviour = weights.map(w => Math.round((w / sum) * moviesRated));
-
-      return {
-        userId: id,
-        displayName: `User #${id}`,
-        moviesRated,
-        avgRating: Number(avgRating.toFixed(2)),
-        favoriteGenre,
-        mostActiveGenre: mostActive,
-        favoriteGenres,
-        ratingBehaviour,
-      };
-    }
-
-    return { USER_COUNT, profileFor };
-  })();
-
-  /* ---------------------------------------------------------
-     2) STATE & ELS
+     1) STATE & ELS
      --------------------------------------------------------- */
   const state = {
     users: [],
@@ -91,7 +27,7 @@
   }
 
   /* ---------------------------------------------------------
-     3) HELPERS
+     2) HELPERS
      --------------------------------------------------------- */
   function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({
@@ -112,20 +48,16 @@
   ];
 
   /* ---------------------------------------------------------
-     4) DATA FETCH (with fallback)
+     3) DATA FETCH
      --------------------------------------------------------- */
   async function fetchInsights(userId) {
-    try {
-      const data = await API.getUserInsights(userId);
-      if (data && typeof data === 'object' && data.userId) return data;
-    } catch {
-      // fall through
-    }
-    return MockProfiles.profileFor(userId);
+    const data = await API.getUserInsights(userId);
+    if (data && typeof data === 'object' && data.userId) return data;
+    throw new Error('User profile is unavailable');
   }
 
   /* ---------------------------------------------------------
-     5) RENDER — HEADER + STATS
+     4) RENDER — HEADER + STATS
      --------------------------------------------------------- */
   function renderHeader(profile) {
     if (els.avatar) els.avatar.textContent = `U${profile.userId}`;
@@ -180,7 +112,7 @@
   }
 
   /* ---------------------------------------------------------
-     6) RENDER — CHARTS
+     5) RENDER — CHARTS
      --------------------------------------------------------- */
   function renderFavoriteGenres(profile) {
     const ctx = document.getElementById('chartFavGenres');
@@ -251,7 +183,8 @@
     const ctx = document.getElementById('chartRatingBehaviour');
     if (!ctx) return;
 
-    const labels = ['5 ★', '4 ★', '3 ★', '2 ★', '1 ★'];
+    const labels = ['5', '4.5', '4', '3.5', '3', '2.5', '2', '1.5', '1', '0.5']
+      .map(value => `${value} ★`);
     const data = profile.ratingBehaviour;
 
     const cfg = {
@@ -260,7 +193,7 @@
         labels,
         datasets: [{
           data,
-          backgroundColor: ['#E50914', '#F97316', '#FBBF24', '#38BDF8', '#6B7280'],
+          backgroundColor: ['#E50914', '#F97316', '#FB923C', '#FBBF24', '#FDE047', '#38BDF8', '#0EA5E9', '#6366F1', '#64748B', '#6B7280'],
           borderRadius: 6,
           borderSkipped: false,
           maxBarThickness: 52,
@@ -314,54 +247,26 @@
   }
 
   /* ---------------------------------------------------------
-     7) RENDER — RECOMMENDATIONS
+     6) RENDER — RECOMMENDATIONS
      --------------------------------------------------------- */
-  function scoreForUser(movie, profile) {
-    const genres = movie.genres || [];
-    let score = 0;
-
-    if (genres.includes(profile.favoriteGenre))  score += 40;
-    if (genres.includes(profile.mostActiveGenre)) score += 15;
-
-    // Reward higher ratings
-    score += (movie.rating || 0) * 8;
-
-    // Small deterministic bonus per user so different users see different orders
-    const seed = (profile.userId * 9301 + (movie.id || 0) * 49297) % 1000;
-    score += (seed / 1000) * 10;
-
-    return score;
-  }
-
-async function renderRecommendations(profile) {
+  async function renderRecommendations(profile) {
     if (!els.recGrid) return;
 
-    // Tier 1: real ALS recommendations from the backend.
-    let ranked = null;
+    let ranked = [];
     try {
       const res = await fetch(`/api/user/${profile.userId}/recommendations?limit=6`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data) && data.length) ranked = data;
+        if (Array.isArray(data)) ranked = data;
       }
-    } catch { /* fall through to heuristic */ }
-
-    // Tier 2: heuristic on the embedded mock list.
-    if (!ranked) {
-      const all = MockData.movies || [];
-      ranked = [...all]
-        .map(m => ({ m, s: scoreForUser(m, profile) }))
-        .sort((a, b) => b.s - a.s)
-        .slice(0, 6)
-        .map(x => x.m);
-    }
+    } catch { /* leave the analytics view available without model artifacts */ }
 
     if (!ranked.length) {
       els.recGrid.innerHTML = `
         <div class="state" style="grid-column:1/-1">
           <div class="state__icon"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></div>
-          <p class="state__title">No recommendations yet</p>
-          <p class="state__text">There isn't enough rating history for this profile.</p>
+          <p class="state__title">ALS results are not available</p>
+          <p class="state__text">Run the Spark ALS job, verify its artifacts, then enable them with MOVIESPHERE_USE_ALS=1.</p>
         </div>`;
       return;
     }
@@ -369,17 +274,14 @@ async function renderRecommendations(profile) {
     MovieCard.renderGrid(els.recGrid, ranked);
 
     if (els.recSub) {
-      const src = (ranked[0] && typeof ranked[0].match === 'number')
-        ? 'ALS collaborative filtering'
-        : 'genre-based heuristic';
       els.recSub.textContent =
-        `Top 6 picks for ${profile.displayName} · favourite genre: ${profile.favoriteGenre} · ` +
-        `based on ${profile.moviesRated} rated movies (avg ${profile.avgRating.toFixed(2)}★) · source: ${src}`;
+        `ALS collaborative filtering · ${profile.displayName} · ${profile.moviesRated} rated movies · ` +
+        `average score ${profile.avgRating.toFixed(2)} / 5`;
     }
 }
 
   /* ---------------------------------------------------------
-     8) ORCHESTRATION
+     7) ORCHESTRATION
      --------------------------------------------------------- */
   async function loadUser(userId) {
     state.currentUserId = Number(userId) || 1;
@@ -411,12 +313,12 @@ async function renderRecommendations(profile) {
       const url = new URL(location.href);
       url.searchParams.set('user', profile.userId);
       history.replaceState(null, '', url);
-    } catch {
+    } catch (error) {
       els.stats.innerHTML = `
         <div class="state" style="grid-column:1/-1">
           <div class="state__icon"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i></div>
-          <p class="state__title">Unable to load profile</p>
-          <p class="state__text">Please try again.</p>
+          <p class="state__title">Unable to load this dataset profile</p>
+          <p class="state__text">${escapeHtml(error.message || 'Please try again.')}</p>
         </div>`;
       els.recGrid.innerHTML = '';
     } finally {
@@ -425,23 +327,29 @@ async function renderRecommendations(profile) {
   }
 
   /* ---------------------------------------------------------
-     9) PICKER
+     8) PICKER
      --------------------------------------------------------- */
-  function buildPicker() {
-    if (!els.select) return;
-    const count = MockProfiles.USER_COUNT;
-    els.select.innerHTML = Array.from({ length: count }, (_, i) => {
-      const id = i + 1;
-      return `<option value="${id}">User #${id}</option>`;
-    }).join('');
+  async function buildPicker() {
+    if (!els.select) return [];
+    els.select.innerHTML = '<option value="">Loading dataset users…</option>';
 
+    const response = await fetch('/api/users');
+    if (!response.ok) throw new Error(`User directory unavailable (${response.status})`);
+    const directory = await response.json();
+    state.users = Array.isArray(directory.users) ? directory.users : [];
+    if (!state.users.length) throw new Error('No users are present in the loaded dataset');
+
+    els.select.innerHTML = state.users.map(user =>
+      `<option value="${Number(user.userId)}">User #${Number(user.userId)} · ${Number(user.ratingsCount).toLocaleString()} ratings</option>`
+    ).join('');
     els.select.addEventListener('change', e => loadUser(e.target.value));
+    return state.users;
   }
 
   /* ---------------------------------------------------------
-     10) INIT
+     9) INIT
      --------------------------------------------------------- */
-  function init() {
+  async function init() {
     if (!document.getElementById('profileStats')) return;
     if (!window.Chart) {
       console.warn('Chart.js not loaded');
@@ -450,14 +358,25 @@ async function renderRecommendations(profile) {
 
     cacheEls();
     chartDefaults();
-    buildPicker();
-
-    // Read ?user= from URL, else default to 1
-    const url = new URL(location.href);
-    const initial = Number(url.searchParams.get('user')) || 1;
-    if (els.select) els.select.value = String(initial);
-
-    loadUser(initial);
+    try {
+      const users = await buildPicker();
+      const url = new URL(location.href);
+      const requested = Number(url.searchParams.get('user'));
+      const initial = users.some(user => user.userId === requested)
+        ? requested
+        : users[0].userId;
+      if (els.select) els.select.value = String(initial);
+      await loadUser(initial);
+    } catch (error) {
+      if (els.select) els.select.innerHTML = '<option value="">Dataset unavailable</option>';
+      els.stats.innerHTML = `
+        <div class="state" style="grid-column:1/-1">
+          <div class="state__icon"><i class="fa-solid fa-database" aria-hidden="true"></i></div>
+          <p class="state__title">MovieLens data is unavailable</p>
+          <p class="state__text">${escapeHtml(error.message)}. Check MOVIELENS_DIR and make sure movies.csv and ratings.csv are present.</p>
+        </div>`;
+      els.recGrid.innerHTML = '';
+    }
   }
 
   document.addEventListener('DOMContentLoaded', init);

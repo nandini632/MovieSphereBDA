@@ -69,9 +69,6 @@
 .chart-card__body { height: 260px; }
 .chart-card--wide .chart-card__body { height: 280px; }
 
-.cloud-cards { grid-template-columns: 1fr; }
-.cloud-metrics { grid-template-columns: repeat(3, 1fr); }
-
 .pipeline__split { grid-template-columns: 1fr; gap: var(--s-3); }
 .pipeline__branch { max-width: 380px; margin: 0 auto; width: 100%; }
 .pipeline__merge { display: none; }
@@ -117,7 +114,6 @@
   .movie-card__body { padding: var(--s-3); gap: 4px; }
   .movie-card__title { font-size: 0.8125rem; min-height: 2.4em; }
   .movie-card__meta, .movie-card__genres { font-size: 0.6875rem; }
-  .movie-card__fav { width: 30px; height: 30px; top: var(--s-2); right: var(--s-2); }
   .movie-card__rating-badge { bottom: var(--s-2); left: var(--s-2); padding: 4px 8px; font-size: 0.6875rem; }
 
   /* KPIs */
@@ -161,6 +157,11 @@
   gap: 6px;
   padding-bottom: var(--s-4);
 }
+.eda-toolbar { flex-direction: column; align-items: stretch; gap: var(--s-3); }
+.eda-toolbar .analytics-filters { margin-bottom: 0; }
+.eda-export { align-self: flex-start; }
+.eda-meta { margin-top: 0; gap: 7px 12px; }
+.eda-heatmap { min-width: 790px; }
 .filter-pill { padding: 8px 12px; font-size: 0.75rem; }
 .filter-pill__caret { display: none; }
 .analytics__kpis { grid-template-columns: repeat(2, 1fr); }
@@ -171,10 +172,7 @@
 .key-insight { padding: var(--s-4); gap: var(--s-3); }
 .key-insight__text { font-size: 0.875rem; }
 
-.cloud-card__head { padding: var(--s-4); flex-wrap: wrap; }
-.cloud-card__body { padding: var(--s-4); gap: var(--s-4); }
-.cloud-metrics { grid-template-columns: 1fr 1fr; }
-.cloud-metric__value { font-size: 0.9375rem; }
+.bda-run-card { grid-template-columns: 1fr; }
 
 .arch-flow { padding: var(--s-6) var(--s-3); }
 .arch-flow__node { min-width: 0; width: 100%; max-width: 100%; padding: var(--s-4); }

@@ -186,6 +186,30 @@ def analytics_kpis() -> dict:
 
 
 # ----------------------------------------------------------------------
+# Dataset user directory
+# ----------------------------------------------------------------------
+def user_directory(limit: int = 1000) -> dict:
+    """Return real MovieLens users and their observed rating counts."""
+    ratings = loader.ratings()
+    grouped = (
+        ratings.groupby("userId")["rating"]
+        .agg(["size", "mean"])
+        .reset_index()
+        .sort_values("userId")
+    )
+    grouped.columns = ["userId", "ratings_count", "avg_rating"]
+    users = [
+        {
+            "userId": int(row.userId),
+            "ratingsCount": int(row.ratings_count),
+            "avgRating": round(float(row.avg_rating), 2),
+        }
+        for row in grouped.head(max(1, int(limit))).itertuples(index=False)
+    ]
+    return {"total": int(len(grouped)), "users": users}
+
+
+# ----------------------------------------------------------------------
 # Per-user insights
 # ----------------------------------------------------------------------
 def user_insights(user_id: int) -> dict | None:
@@ -217,12 +241,10 @@ def user_insights(user_id: int) -> dict | None:
 
     favorite_genres = [{"genre": g, "count": c} for g, c in sorted_genres[:6]]
 
-    # Rating behaviour: index 0 = 5★, index 4 = 1★
-    behaviour = [0, 0, 0, 0, 0]
-    for rating in user_r["rating"]:
-        idx = int(round(float(rating)))
-        if 1 <= idx <= 5:
-            behaviour[5 - idx] += 1
+    # Preserve the observed half-star scale, ordered highest to lowest.
+    rating_bins = [value / 2 for value in range(10, 0, -1)]
+    rating_counts = user_r["rating"].value_counts()
+    behaviour = [int(rating_counts.get(value, 0)) for value in rating_bins]
 
     return {
         "userId": int(user_id),

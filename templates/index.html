@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}MovieSphere — Discover Your Next Favorite Movie{% endblock %}
+{% block title %}MovieSphere — MovieLens BDA &amp; EDA{% endblock %}
 
 {% block content %}
 
@@ -12,30 +12,30 @@
   <div class="container hero__inner">
     <span class="hero__eyebrow">
       <i class="fa-solid fa-bolt"></i>
-      Powered by PySpark &amp; Collaborative Filtering
+      Big Data Analytics · MovieLens study
     </span>
 
     <h1 class="hero__title">
-      Discover Your Next<br>
-      <span class="text-accent">Favorite Movie</span>
+      Explore the patterns<br>
+      <span class="text-accent">behind movie ratings</span>
     </h1>
 
     <p class="hero__subtitle">
-      Explore millions of movie ratings, uncover hidden patterns, and discover
-      personalized recommendations powered by Big Data.
+      Profile MovieLens data, analyze rating and genre behavior, and inspect
+      collaborative filtering results from the same dataset.
     </p>
 
     <div class="hero__actions">
-      <a href="/explore" class="btn btn--primary btn--lg">
-        <i class="fa-solid fa-compass"></i> Explore Movies
+      <a href="/analytics" class="btn btn--primary btn--lg">
+        <i class="fa-solid fa-chart-line"></i> Open EDA Lab
       </a>
-      <a href="/recommendations" class="btn btn--ghost btn--lg">
-        <i class="fa-solid fa-wand-magic-sparkles"></i> Get Recommendations
+      <a href="/explore" class="btn btn--ghost btn--lg">
+        <i class="fa-solid fa-compass"></i> Explore Dataset
       </a>
     </div>
 
     <div class="hero__stats" id="heroStats" data-source="api">
-      <!-- Populated by app.js from /api/analytics (mock fallback) -->
+      <!-- Populated by app.js from live MovieLens aggregates. -->
     </div>
   </div>
 </section>
@@ -45,7 +45,7 @@
   <div class="section__head">
     <div>
       <h2 class="section__title">Trending Movies</h2>
-      <p class="section__subtitle">Most rated titles across the dataset right now.</p>
+      <p class="section__subtitle">Titles with the most observed ratings in the loaded dataset.</p>
     </div>
     <a href="/explore" class="link-more">
       View all <i class="fa-solid fa-arrow-right"></i>
@@ -68,7 +68,7 @@
   <div class="section__head">
     <div>
       <h2 class="section__title">Data at a Glance</h2>
-      <p class="section__subtitle">Scale of the MovieLens dataset processed by the pipeline.</p>
+      <p class="section__subtitle">Current MovieLens dataset profile.</p>
     </div>
   </div>
 
@@ -107,32 +107,32 @@
   <div class="section__head">
     <div>
       <h2 class="section__title">Why MovieSphere?</h2>
-      <p class="section__subtitle">A complete Big Data pipeline — from raw ratings to ranked recommendations.</p>
+      <p class="section__subtitle">A reproducible data pipeline from source CSVs to analysis and model outputs.</p>
     </div>
   </div>
 
   <div class="feature-grid">
     <article class="feature-card">
-      <div class="feature-card__icon"><i class="fa-solid fa-database"></i></div>
-      <h3 class="feature-card__title">Big Data Analytics</h3>
+      <div class="feature-card__icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+      <h3 class="feature-card__title">EDA and Data Quality</h3>
       <p class="feature-card__text">
-        Analyze millions of user–movie interactions using PySpark and distributed aggregation.
+        Inspect score distributions, missing values, duplicate pairs, temporal activity, and feature relationships.
       </p>
     </article>
 
     <article class="feature-card">
-      <div class="feature-card__icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-      <h3 class="feature-card__title">Personalized Recommendations</h3>
+      <div class="feature-card__icon"><i class="fa-solid fa-microchip"></i></div>
+      <h3 class="feature-card__title">Distributed Processing</h3>
       <p class="feature-card__text">
-        Use collaborative filtering to discover movies tailored to user preferences.
+        Run batch aggregations and collaborative filtering with Spark SQL and MLlib ALS.
       </p>
     </article>
 
     <article class="feature-card">
-      <div class="feature-card__icon"><i class="fa-solid fa-cloud"></i></div>
-      <h3 class="feature-card__title">Cloud Enabled</h3>
+      <div class="feature-card__icon"><i class="fa-solid fa-scale-balanced"></i></div>
+      <h3 class="feature-card__title">Evidence-aware Rankings</h3>
       <p class="feature-card__text">
-        Store datasets and processed results using cloud storage and access the application remotely.
+        Compare raw movie averages with Bayesian-adjusted scores and inspect rating spread before drawing conclusions.
       </p>
     </article>
   </div>
@@ -142,13 +142,13 @@
 <section class="section container">
   <div class="cta-strip">
     <div class="cta-strip__content">
-      <h2 class="cta-strip__title">Not sure what to watch?</h2>
+      <h2 class="cta-strip__title">Investigate a movie's signals</h2>
       <p class="cta-strip__text">
-        Pick a movie you already love and let the ALS engine find your next one.
+        Explore its score history, rating volume, genre, and related titles.
       </p>
     </div>
-    <a href="/recommendations" class="btn btn--primary btn--lg">
-      <i class="fa-solid fa-wand-magic-sparkles"></i> Get Recommendations
+    <a href="/analytics" class="btn btn--primary btn--lg">
+      <i class="fa-solid fa-chart-line"></i> Open EDA Lab
     </a>
   </div>
 </section>

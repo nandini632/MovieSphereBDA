@@ -1,8 +1,5 @@
 Flask>=3.0
 pandas>=2.0
 numpy>=1.24
-#pyspark>=3.5
-gunicorn>=21.0
-boto3>=1.34
-python-dotenv
-requests
+scipy>=1.10
+scikit-learn>=1.3
